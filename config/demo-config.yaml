@@ -3,17 +3,29 @@ sentinel:
   host: 1.2.3.4:26379
   password: 
   master_name:
-    - master-1
-    - master-2
+    - codis-demo-1
+    - master-sg1
 
 dns-providers:
   - name: huaweicloud-private-1
     type: huaweicloud-private
-    access_key: ak
-    secret_key: sk
-    region: cn-east-3
     domain: demo.com
     zone_id: id
     record:
       - type: A
         ttl: 1
+    huaweicloud:
+      access_key: xxx
+      secret_key: xxx
+      region: cn-east-3
+  
+  - name: tencentcloud-private-1
+    type: tencentcloud-private
+    domain: demo.com
+    zone_id: id
+    record:
+      - type: A
+        ttl: 300
+    tencentcloud:
+      secretId: xxx
+      secretKey: xxx

@@ -15,29 +15,42 @@ A tool to automatically synchronize DNS records when Redis Sentinel master-slave
 | Provider | Type | Description | Status |
 |----------|------|-------------|---------|
 | Huawei Cloud Private DNS | huaweicloud-private | Private DNS service in Huawei Cloud | ✅ Available |
+| Tencent Cloud Private DNS | tencentcloud-private | Private DNS service in Tencent Cloud | ✅ Available |
 
 ## Configuration
 
 ```yaml
 sentinel:
-  name: sentinel-1                  # Sentinel instance name
-  host: 127.0.0.1:26379            # Sentinel address
-  password:                        # Optional password
-  master_name:                     # List of master names to monitor
-    - master-1
-    - master-2
+  name: sentinel-1
+  host: 1.2.3.4:26379
+  password: 
+  master_name:
+    - codis-demo-1
+    - master-sg1
 
-dns-providers:                     # List of DNS providers
-  - name: provider-1               # Provider instance name
-    type: huaweicloud-private     # Provider type
-    access_key: your-ak           # Provider credentials
-    secret_key: your-sk
-    region: cn-east-3             # Provider region
-    domain: example.com           # DNS domain
-    zone_id: your-zone-id         # DNS zone ID
-    record:                       # Record settings
+dns-providers:
+  - name: huaweicloud-private-1
+    type: huaweicloud-private
+    domain: demo.com
+    zone_id: id
+    record:
       - type: A
         ttl: 1
+    huaweicloud:
+      access_key: xxx
+      secret_key: xxx
+      region: cn-east-3
+  
+  - name: tencentcloud-private-1
+    type: tencentcloud-private
+    domain: demo.com
+    zone_id: id
+    record:
+      - type: A
+        ttl: 300
+    tencentcloud:
+      secretId: xxx
+      secretKey: xxx
 ```
 
 ## Usage

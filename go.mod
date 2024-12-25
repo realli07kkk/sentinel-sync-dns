@@ -1,10 +1,12 @@
 module github.com/realli07kkk/sentinel-sync-dns
 
-go 1.23.4
+go 1.20
 
 require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/huaweicloud/huaweicloud-sdk-go-v3 v0.1.128
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.1068
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/privatedns v1.0.1068
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -20,3 +22,6 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+// 移除旧版本冲突
+replace github.com/tencentcloud/tencentcloud-sdk-go => github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud v1.0.1068

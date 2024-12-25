@@ -8,6 +8,7 @@ import (
 
 type Provider interface {
 	UpdateDNS(masterName, newIP string) error
+	GetName() string // 添加获取Provider名称的方法
 }
 
 type ProviderFactory interface {
