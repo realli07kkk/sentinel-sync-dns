@@ -19,27 +19,64 @@ func init() {
 type Factory struct{}
 
 func (f *Factory) Create(cfg *config.DNSProviderConfig) (provider.Provider, error) {
-	// 添加类型检查日志
 	if cfg.Type != "huaweicloud-private" {
 		return nil, fmt.Errorf("invalid provider type: %s, expected: huaweicloud-private", cfg.Type)
 	}
 
-	log.Printf("创建华为云私有DNS Provider: name=%s, domain=%s", cfg.Name, cfg.Domain)
+	accessKey, secretKey, regionStr, err := cfg.GetHuaweiCloudConfig()
+	if err != nil {
+		return nil, fmt.Errorf("invalid huaweicloud configuration: %v", err)
+	}
+
+	if len(cfg.Record) == 0 {
+		return nil, fmt.Errorf("record configuration is required")
+	}
+
+	if cfg.Record[0].TTL <= 0 {
+		return nil, fmt.Errorf("invalid TTL value: %d", cfg.Record[0].TTL)
+	}
+
+	recordConfig := RecordConfig{
+		Type: cfg.Record[0].Type,
+		TTL:  cfg.Record[0].TTL,
+	}
+
+	log.Printf("华为云私有DNS Provider[%s]: domain=%s, zone=%s, type=%s, ttl=%d",
+		cfg.Name, cfg.Domain, cfg.ZoneID, recordConfig.Type, recordConfig.TTL)
 
 	auth := basic.NewCredentialsBuilder().
-		WithAk(cfg.AccessKey).
-		WithSk(cfg.SecretKey).
+		WithAk(accessKey).
+		WithSk(secretKey).
 		Build()
+
+	regionId := region.ValueOf(regionStr)
+	if regionId == nil {
+		return nil, fmt.Errorf("invalid region: %s", regionStr)
+	}
 
 	client := dns.NewDnsClient(
 		dns.DnsClientBuilder().
-			WithRegion(region.ValueOf(cfg.Region)).
+			WithRegion(regionId).
 			WithCredential(auth).
 			Build())
 
+	if cfg.ZoneID == "" {
+		return nil, fmt.Errorf("zone_id is required")
+	}
+
+	request := &model.ShowPrivateZoneRequest{}
+	request.ZoneId = cfg.ZoneID
+	_, err = client.ShowPrivateZone(request)
+	if err != nil {
+		return nil, fmt.Errorf("验证区域配置[%s]失败: %v", cfg.ZoneID, err)
+	}
+
 	return &Provider{
-		client: client,
-		config: cfg,
+		name:         cfg.Name,
+		client:       client,
+		config:       cfg,
+		zoneId:       cfg.ZoneID,
+		recordConfig: recordConfig,
 	}, nil
 }
 
@@ -55,24 +92,35 @@ type ListResponse struct {
 	Recordsets []RecordSet `json:"recordsets"`
 }
 
+type RecordConfig struct {
+	Type string
+	TTL  int
+}
+
 type Provider struct {
-	client *dns.DnsClient
-	config *config.DNSProviderConfig
+	name         string
+	client       *dns.DnsClient
+	config       *config.DNSProviderConfig
+	zoneId       string
+	recordConfig RecordConfig
+}
+
+func (p *Provider) GetName() string {
+	return p.name
 }
 
 func (p *Provider) UpdateDNS(masterName, newIP string) error {
-	log.Printf("华为云私有DNS Provider[%s] 开始更新记录", p.config.Name)
+	log.Printf("华为云私有DNS Provider[%s] 开始更新记录", p.name)
 	fullDomain := fmt.Sprintf("%s.%s", masterName, p.config.Domain)
 	log.Printf("开始更新DNS记录: 域名=%s, 新IP=%s", fullDomain, newIP)
 
-	// 查询现有记录
 	request := &model.ListRecordSetsByZoneRequest{}
-	request.ZoneId = p.config.ZoneID
+	request.ZoneId = p.zoneId
 	searchMode := "equal"
 	request.SearchMode = &searchMode
 	request.Name = &fullDomain
 
-	log.Printf("查询DNS记录: ZoneID=%s, Domain=%s", p.config.ZoneID, fullDomain)
+	log.Printf("查询DNS记录: ZoneID=%s, Domain=%s", p.zoneId, fullDomain)
 	response, err := p.client.ListRecordSetsByZone(request)
 	if err != nil {
 		return fmt.Errorf("查询DNS记录失败: %v", err)
@@ -91,15 +139,17 @@ func (p *Provider) UpdateDNS(masterName, newIP string) error {
 
 	// 准备更新请求
 	updateRequest := &model.UpdateRecordSetRequest{}
-	updateRequest.ZoneId = p.config.ZoneID
+	updateRequest.ZoneId = p.zoneId
 
 	if recordset.Id == nil {
 		return fmt.Errorf("记录集ID为空")
 	}
 	updateRequest.RecordsetId = *recordset.Id
 
-	ttl := int32(p.config.Record[0].TTL)
-	recordType := p.config.Record[0].Type
+	// 获取 TTL 值并记录日志
+	ttl := int32(p.recordConfig.TTL)
+	log.Printf("华为云DNS记录TTL配置值: %d", ttl)
+	recordType := p.recordConfig.Type
 	records := []string{newIP}
 
 	updateRequest.Body = &model.UpdateRecordSetReq{
@@ -121,11 +171,12 @@ func (p *Provider) createDNSRecord(fullDomain, newIP string) error {
 	log.Printf("开始创建DNS记录: 域名=%s, IP=%s", fullDomain, newIP)
 
 	request := &model.CreateRecordSetRequest{}
-	request.ZoneId = p.config.ZoneID
+	request.ZoneId = p.zoneId
 
 	records := []string{newIP}
-	ttl := int32(p.config.Record[0].TTL)
-	recordType := p.config.Record[0].Type
+	ttl := int32(p.recordConfig.TTL)
+	log.Printf("华为云DNS记录TTL配置值: %d", ttl)
+	recordType := p.recordConfig.Type
 
 	request.Body = &model.CreateRecordSetRequestBody{
 		Records: records,
@@ -135,7 +186,7 @@ func (p *Provider) createDNSRecord(fullDomain, newIP string) error {
 	}
 
 	log.Printf("创建请求参数: ZoneID=%s, Type=%s, TTL=%d",
-		p.config.ZoneID, recordType, ttl)
+		p.zoneId, recordType, ttl)
 
 	response, err := p.client.CreateRecordSet(request)
 	if err != nil {

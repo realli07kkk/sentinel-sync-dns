@@ -13,7 +13,8 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/realli07kkk/sentinel-sync-dns/config"
 	"github.com/realli07kkk/sentinel-sync-dns/provider"
-	_ "github.com/realli07kkk/sentinel-sync-dns/provider/huaweicloud-private" // 确保这个路径正确
+	_ "github.com/realli07kkk/sentinel-sync-dns/provider/huaweicloud-private"
+	_ "github.com/realli07kkk/sentinel-sync-dns/provider/tencentcloud-private"
 )
 
 func main() {
@@ -31,17 +32,17 @@ func main() {
 	log.Printf("配置加载成功: Sentinel=%s, Master=%v",
 		cfg.Sentinel.Host, cfg.Sentinel.MasterName)
 
-	// 创建所有DNS提供者
+	// 创建所有DNSProvider
 	var providers []provider.Provider
 	for _, providerCfg := range cfg.DNSProviders {
 		p, err := provider.CreateProvider(&providerCfg)
 		if err != nil {
-			log.Printf("初始化DNS提供者 %s 失败: %v", providerCfg.Name, err)
+			log.Printf("初始化DNSProvider %s 失败: %v", providerCfg.Name, err)
 			continue
 		}
 		providers = append(providers, p)
-		log.Printf("DNS提供者 %s 初始化成功: Region=%s, Domain=%s",
-			providerCfg.Name, providerCfg.Region, providerCfg.Domain)
+		log.Printf("DNSProvider %s 初始化成功: Domain=%s",
+			providerCfg.Name, providerCfg.Domain)
 	}
 
 	// 连接Sentinel
@@ -121,14 +122,14 @@ func main() {
 			newIP := parts[3]
 			log.Printf("处理master切换事件: master=%s, newIP=%s", masterName, newIP)
 
-			// 遍历所有provider执行更新
 			for _, p := range providers {
+				log.Printf("使用 Provider[%s] 更新DNS记录", p.GetName())
 				err := p.UpdateDNS(masterName, newIP)
 				if err != nil {
 					log.Printf("更新DNS记录失败: %v", err)
-				} else {
-					log.Printf("DNS记录更新成功")
+					continue
 				}
+				log.Printf("DNS记录更新成功")
 			}
 
 		case "*:convert-to-master":

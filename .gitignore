@@ -26,3 +26,4 @@ go.work.sum
 
 info.txt
 config/test.yaml
+.DS_Store
