@@ -10,7 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/realli07kkk/sentinel-sync-dns/cluster"
 	"github.com/realli07kkk/sentinel-sync-dns/config"
 	"github.com/realli07kkk/sentinel-sync-dns/provider"
@@ -18,6 +17,7 @@ import (
 	_ "github.com/realli07kkk/sentinel-sync-dns/provider/huaweicloud-private"
 	_ "github.com/realli07kkk/sentinel-sync-dns/provider/tencentcloud-private"
 	"github.com/realli07kkk/sentinel-sync-dns/sentinel"
+	"github.com/redis/go-redis/v9"
 )
 
 const (

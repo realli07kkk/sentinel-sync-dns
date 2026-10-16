@@ -4,7 +4,7 @@
 `main.go` is the CLI entrypoint that subscribes to Redis Sentinel events and dispatches DNS updates. Shared config parsing lives in `config/`, with `config/demo-config.yaml` as the reference template. Provider abstractions are in `provider/provider.go`; each concrete DNS backend gets its own subdirectory such as `provider/huaweicloud-private/` or `provider/tencentcloud-private/`. Build artifacts are written to `bin/` and should not be edited by hand.
 
 ## Build, Test, and Development Commands
-Use Go 1.20 to match `go.mod`.
+Use Go 1.27 to match `go.mod`.
 
 - `go build -o sentinel-sync-dns` builds the local binary for the current platform.
 - `go test ./...` runs all package tests; today it mainly verifies that packages compile.

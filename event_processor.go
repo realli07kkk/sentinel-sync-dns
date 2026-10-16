@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/realli07kkk/sentinel-sync-dns/cluster"
 	"github.com/realli07kkk/sentinel-sync-dns/provider"
 	"github.com/realli07kkk/sentinel-sync-dns/sentinel"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
