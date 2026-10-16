@@ -1,14 +1,15 @@
 package provider
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/realli07kkk/sentinel-sync-dns/config"
 )
 
 type Provider interface {
-	UpdateDNS(masterName, newIP string) error
-	GetName() string // 添加获取Provider名称的方法
+	EnsureDNS(ctx context.Context, masterName, newIP string) (bool, error)
+	GetName() string
 }
 
 type ProviderFactory interface {

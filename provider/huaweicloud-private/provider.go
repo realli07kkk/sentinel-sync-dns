@@ -1,10 +1,12 @@
 package huaweicloud_private
 
 import (
+	"context"
 	"fmt"
 	"log"
 
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
+	httpconfig "github.com/huaweicloud/huaweicloud-sdk-go-v3/core/config"
 	dns "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/dns/v2"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/services/dns/v2/model"
 	region "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/dns/v2/region"
@@ -48,6 +50,7 @@ func (f *Factory) Create(cfg *config.DNSProviderConfig) (provider.Provider, erro
 		WithAk(accessKey).
 		WithSk(secretKey).
 		Build()
+	httpClientConfig := httpconfig.DefaultHttpConfig().WithTimeout(cfg.RequestTimeout.Std())
 
 	regionId := region.ValueOf(regionStr)
 	if regionId == nil {
@@ -58,6 +61,7 @@ func (f *Factory) Create(cfg *config.DNSProviderConfig) (provider.Provider, erro
 		dns.DnsClientBuilder().
 			WithRegion(regionId).
 			WithCredential(auth).
+			WithHttpConfig(httpClientConfig).
 			Build())
 
 	if cfg.ZoneID == "" {
@@ -80,18 +84,6 @@ func (f *Factory) Create(cfg *config.DNSProviderConfig) (provider.Provider, erro
 	}, nil
 }
 
-type RecordSet struct {
-	ID      string   `json:"id"`
-	Name    string   `json:"name"`
-	Type    string   `json:"type"`
-	TTL     int      `json:"ttl"`
-	Records []string `json:"records"`
-}
-
-type ListResponse struct {
-	Recordsets []RecordSet `json:"recordsets"`
-}
-
 type RecordConfig struct {
 	Type string
 	TTL  int
@@ -109,7 +101,11 @@ func (p *Provider) GetName() string {
 	return p.name
 }
 
-func (p *Provider) UpdateDNS(masterName, newIP string) error {
+func (p *Provider) EnsureDNS(ctx context.Context, masterName, newIP string) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+
 	log.Printf("华为云私有DNS Provider[%s] 开始更新记录", p.name)
 	fullDomain := fmt.Sprintf("%s.%s", masterName, p.config.Domain)
 	log.Printf("开始更新DNS记录: 域名=%s, 新IP=%s", fullDomain, newIP)
@@ -123,30 +119,33 @@ func (p *Provider) UpdateDNS(masterName, newIP string) error {
 	log.Printf("查询DNS记录: ZoneID=%s, Domain=%s", p.zoneId, fullDomain)
 	response, err := p.client.ListRecordSetsByZone(request)
 	if err != nil {
-		return fmt.Errorf("查询DNS记录失败: %v", err)
+		return false, fmt.Errorf("查询DNS记录失败: %v", err)
 	}
 
 	log.Printf("查询结果: %+v", response)
 
-	// 检查是否有记录返回
 	if response.Recordsets == nil || len(*response.Recordsets) == 0 {
 		log.Printf("未找到现有记录，准备创建新记录")
-		return p.createDNSRecord(fullDomain, newIP)
+		return p.createDNSRecord(ctx, fullDomain, newIP)
 	}
 
-	// 获取第一个匹配的记录
 	recordset := (*response.Recordsets)[0]
+	if p.recordMatches(recordset, newIP) {
+		log.Printf("华为云私有DNS Provider[%s] 记录已是目标状态，跳过更新", p.name)
+		return false, nil
+	}
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
 
-	// 准备更新请求
 	updateRequest := &model.UpdateRecordSetRequest{}
 	updateRequest.ZoneId = p.zoneId
 
 	if recordset.Id == nil {
-		return fmt.Errorf("记录集ID为空")
+		return false, fmt.Errorf("记录集ID为空")
 	}
 	updateRequest.RecordsetId = *recordset.Id
 
-	// 获取 TTL 值并记录日志
 	ttl := int32(p.recordConfig.TTL)
 	log.Printf("华为云DNS记录TTL配置值: %d", ttl)
 	recordType := p.recordConfig.Type
@@ -158,16 +157,19 @@ func (p *Provider) UpdateDNS(masterName, newIP string) error {
 		Type:    &recordType,
 	}
 
-	// 执行更新操作
 	_, err = p.client.UpdateRecordSet(updateRequest)
 	if err != nil {
-		return fmt.Errorf("更新DNS记录失败: %v", err)
+		return false, fmt.Errorf("更新DNS记录失败: %v", err)
 	}
 
-	return nil
+	return true, nil
 }
 
-func (p *Provider) createDNSRecord(fullDomain, newIP string) error {
+func (p *Provider) createDNSRecord(ctx context.Context, fullDomain, newIP string) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+
 	log.Printf("开始创建DNS记录: 域名=%s, IP=%s", fullDomain, newIP)
 
 	request := &model.CreateRecordSetRequest{}
@@ -191,9 +193,22 @@ func (p *Provider) createDNSRecord(fullDomain, newIP string) error {
 	response, err := p.client.CreateRecordSet(request)
 	if err != nil {
 		log.Printf("创建DNS记录失败: %v", err)
-		return fmt.Errorf("创建DNS记录失败: %v", err)
+		return false, fmt.Errorf("创建DNS记录失败: %v", err)
 	}
 
 	log.Printf("创建DNS记录成功: %+v", response)
-	return nil
+	return true, nil
+}
+
+func (p *Provider) recordMatches(recordset model.ListRecordSets, newIP string) bool {
+	if recordset.Type == nil || *recordset.Type != p.recordConfig.Type {
+		return false
+	}
+	if recordset.Ttl == nil || int(*recordset.Ttl) != p.recordConfig.TTL {
+		return false
+	}
+	if recordset.Records == nil || len(*recordset.Records) != 1 {
+		return false
+	}
+	return (*recordset.Records)[0] == newIP
 }
