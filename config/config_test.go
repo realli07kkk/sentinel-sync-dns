@@ -121,6 +121,48 @@ dns-providers:
 	}
 }
 
+func TestLoadConfigParsesAliCloudProvider(t *testing.T) {
+	configPath := writeTempConfig(t, `
+sentinel:
+  host: 127.0.0.1:26379
+dns-providers:
+  - name: alicloud-1
+    type: alicloud-private
+    domain: demo.com
+    zone_id: zone-1
+    record:
+      - type: A
+        ttl: 60
+    alicloud:
+      access_key: ak
+      secret_key: sk
+  - name: alicloud-no-section
+    type: alicloud-private
+    domain: demo.com
+    zone_id: zone-2
+    record:
+      - type: A
+        ttl: 60
+`)
+
+	cfg, err := LoadConfig(configPath)
+	if err != nil {
+		t.Fatalf("LoadConfig returned error: %v", err)
+	}
+
+	accessKey, secretKey, err := cfg.DNSProviders[0].GetAliCloudConfig()
+	if err != nil {
+		t.Fatalf("GetAliCloudConfig returned error: %v", err)
+	}
+	if accessKey != "ak" || secretKey != "sk" {
+		t.Fatalf("unexpected alicloud credentials: %s/%s", accessKey, secretKey)
+	}
+
+	if _, _, err := cfg.DNSProviders[1].GetAliCloudConfig(); err == nil {
+		t.Fatalf("expected error when alicloud configuration is missing")
+	}
+}
+
 func writeTempConfig(t *testing.T, content string) string {
 	t.Helper()
 

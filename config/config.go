@@ -67,6 +67,11 @@ type TencentCloudConfig struct {
 	SecretKey string `yaml:"secretKey"`
 }
 
+type AliCloudConfig struct {
+	AccessKey string `yaml:"access_key"`
+	SecretKey string `yaml:"secret_key"`
+}
+
 type DNSProviderConfig struct {
 	Name           string         `yaml:"name"`
 	Type           string         `yaml:"type"`
@@ -77,6 +82,7 @@ type DNSProviderConfig struct {
 
 	HuaweiCloud  *HuaweiCloudConfig  `yaml:"huaweicloud,omitempty"`
 	TencentCloud *TencentCloudConfig `yaml:"tencentcloud,omitempty"`
+	AliCloud     *AliCloudConfig     `yaml:"alicloud,omitempty"`
 }
 
 func (c *DNSProviderConfig) ApplyDefaults() {
@@ -97,6 +103,13 @@ func (c *DNSProviderConfig) GetTencentCloudConfig() (string, string, error) {
 		return "", "", fmt.Errorf("tencentcloud configuration is missing")
 	}
 	return c.TencentCloud.SecretId, c.TencentCloud.SecretKey, nil
+}
+
+func (c *DNSProviderConfig) GetAliCloudConfig() (string, string, error) {
+	if c.AliCloud == nil {
+		return "", "", fmt.Errorf("alicloud configuration is missing")
+	}
+	return c.AliCloud.AccessKey, c.AliCloud.SecretKey, nil
 }
 
 type RedisConfig struct {

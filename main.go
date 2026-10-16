@@ -14,6 +14,7 @@ import (
 	"github.com/realli07kkk/sentinel-sync-dns/cluster"
 	"github.com/realli07kkk/sentinel-sync-dns/config"
 	"github.com/realli07kkk/sentinel-sync-dns/provider"
+	_ "github.com/realli07kkk/sentinel-sync-dns/provider/alicloud-private"
 	_ "github.com/realli07kkk/sentinel-sync-dns/provider/huaweicloud-private"
 	_ "github.com/realli07kkk/sentinel-sync-dns/provider/tencentcloud-private"
 	"github.com/realli07kkk/sentinel-sync-dns/sentinel"

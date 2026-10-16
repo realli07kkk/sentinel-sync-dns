@@ -44,3 +44,16 @@ dns-providers:
     tencentcloud:
       secretId: xxx
       secretKey: xxx
+
+  - name: alicloud-private-1
+    type: alicloud-private
+    domain: demo.com
+    zone_id: id
+    request_timeout: 30s
+    record:
+      # 阿里云 PrivateZone TTL 仅支持 5/30/60/3600/43200/86400
+      - type: A
+        ttl: 60
+    alicloud:
+      access_key: xxx
+      secret_key: xxx
