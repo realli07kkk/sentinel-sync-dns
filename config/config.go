@@ -72,6 +72,13 @@ type AliCloudConfig struct {
 	SecretKey string `yaml:"secret_key"`
 }
 
+type AWSConfig struct {
+	AccessKey    string `yaml:"access_key"`
+	SecretKey    string `yaml:"secret_key"`
+	SessionToken string `yaml:"session_token"`
+	Region       string `yaml:"region"`
+}
+
 type DNSProviderConfig struct {
 	Name           string         `yaml:"name"`
 	Type           string         `yaml:"type"`
@@ -83,6 +90,7 @@ type DNSProviderConfig struct {
 	HuaweiCloud  *HuaweiCloudConfig  `yaml:"huaweicloud,omitempty"`
 	TencentCloud *TencentCloudConfig `yaml:"tencentcloud,omitempty"`
 	AliCloud     *AliCloudConfig     `yaml:"alicloud,omitempty"`
+	AWS          *AWSConfig          `yaml:"aws,omitempty"`
 }
 
 func (c *DNSProviderConfig) ApplyDefaults() {

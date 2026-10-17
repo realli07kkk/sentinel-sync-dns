@@ -17,6 +17,7 @@ A tool to automatically synchronize DNS records when Redis Sentinel master-slave
 |----------|------|-------------|---------|
 | Huawei Cloud Private DNS | huaweicloud-private | Private DNS service in Huawei Cloud | ✅ Available |
 | Tencent Cloud Private DNS | tencentcloud-private | Private DNS service in Tencent Cloud | ✅ Available |
+| AWS Route 53 Private DNS | aws-private | Route 53 private hosted zones | ✅ Available |
 
 ## Configuration
 
@@ -69,6 +70,22 @@ dns-providers:
     tencentcloud:
       secretId: xxx
       secretKey: xxx
+
+  - name: aws-private-1
+    type: aws-private
+    domain: demo.com
+    zone_id: Z0123456789ABCDEFGHIJ
+    request_timeout: 30s
+    record:
+      - type: A
+        ttl: 60
+    # The aws section is optional. Without access_key/secret_key, the AWS
+    # default credential chain is used (env vars, instance/container role, etc.).
+    aws:
+      access_key: xxx
+      secret_key: xxx
+      # session_token: xxx
+      region: us-east-1
 ```
 
 ## Usage

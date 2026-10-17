@@ -57,3 +57,19 @@ dns-providers:
     alicloud:
       access_key: xxx
       secret_key: xxx
+
+  - name: aws-private-1
+    type: aws-private
+    domain: demo.com
+    zone_id: Z0123456789ABCDEFGHIJ
+    request_timeout: 30s
+    record:
+      - type: A
+        ttl: 60
+    aws:
+      # access_key/secret_key 可省略，省略时使用 AWS 默认凭证链（环境变量、实例角色等）
+      access_key: xxx
+      secret_key: xxx
+      # session_token: xxx
+      # region 仅用于 SDK 端点解析，Route53 为全局服务，默认 us-east-1
+      region: us-east-1

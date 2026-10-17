@@ -163,6 +163,56 @@ dns-providers:
 	}
 }
 
+func TestLoadConfigParsesAWSProvider(t *testing.T) {
+	configPath := writeTempConfig(t, `
+sentinel:
+  host: 127.0.0.1:26379
+dns-providers:
+  - name: aws-1
+    type: aws-private
+    domain: demo.com
+    zone_id: Z0123456789
+    record:
+      - type: A
+        ttl: 60
+    aws:
+      access_key: ak
+      secret_key: sk
+      session_token: token
+      region: ap-southeast-1
+  - name: aws-default-chain
+    type: aws-private
+    domain: demo.com
+    zone_id: Z0987654321
+    record:
+      - type: A
+        ttl: 60
+`)
+
+	cfg, err := LoadConfig(configPath)
+	if err != nil {
+		t.Fatalf("LoadConfig returned error: %v", err)
+	}
+
+	awsCfg := cfg.DNSProviders[0].AWS
+	if awsCfg == nil {
+		t.Fatalf("expected aws configuration to be parsed")
+	}
+	if awsCfg.AccessKey != "ak" || awsCfg.SecretKey != "sk" {
+		t.Fatalf("unexpected aws credentials: %s/%s", awsCfg.AccessKey, awsCfg.SecretKey)
+	}
+	if awsCfg.SessionToken != "token" {
+		t.Fatalf("unexpected aws session token: %s", awsCfg.SessionToken)
+	}
+	if awsCfg.Region != "ap-southeast-1" {
+		t.Fatalf("unexpected aws region: %s", awsCfg.Region)
+	}
+
+	if cfg.DNSProviders[1].AWS != nil {
+		t.Fatalf("expected aws configuration to be optional")
+	}
+}
+
 func writeTempConfig(t *testing.T, content string) string {
 	t.Helper()
 
